@@ -55,46 +55,51 @@ The primary goal of this project is to identify similar or identical code fragme
 
 ## Usage
 
-The system can be run in two modes: using synthetic data for a quick test or with real data collected from GitHub.
+The system can be run in two ways: as a single, monolithic script or as a series of individual phases.
 
-### Using Synthetic Data
+### Monolithic Execution
 
-To run the pipeline with synthetic data, execute the following command:
+To run the entire pipeline from a single script, use the `code_clone_detection_system_reference_code.py` file.
+
+**Using Synthetic Data:**
 
 ```bash
 python code_clone_detection_system_reference_code.py
 ```
 
-This will run the complete pipeline, train the models, and generate visualizations and a CSV report in the `./results/` directory.
+**Using Real GitHub Data:**
 
-### Using Real GitHub Data
-
-To use real data from GitHub, you need to modify the `main` function in `code_clone_detection_system_reference_code.py`:
+Modify the `main` function in `code_clone_detection_system_reference_code.py`:
 
 1.  Set `use_synthetic=False`.
-2.  Provide your GitHub token in the `github_token` argument of the `run_full_pipeline` function. This is recommended to avoid API rate limits.
+2.  Provide your GitHub token.
 
-```python
-if __name__ == "__main__":
-    pipeline = CodeCloneDetectionPipeline()
-    results = pipeline.run_full_pipeline(
-        use_synthetic=False,
-        github_token="YOUR_GITHUB_TOKEN"  # Add your GitHub token here
-    )
-```
+### Phased Execution
+
+The project has been refactored into individual phases, each with its own script and batch file for execution.
+
+1.  **Data Collection:** `run_1_data_collection.bat`
+2.  **Feature Engineering:** `run_2_feature_engineering.bat`
+3.  **Deep Learning Baselines:** `run_3_deep_learning_baselines.bat` (Note: This script defines the models and is not meant to be run directly)
+4.  **Meta-Classifier:** `run_4_meta_classifier.bat` (Note: This script defines the models and is not meant to be run directly)
+5.  **SOTA Comparison:** `run_5_sota_comparison.bat` (Note: This script defines the models and is not meant to be run directly)
+6.  **Visualization:** `run_6_visualization.bat` (Note: This script defines the models and is not meant to be run directly)
+7.  **Full Pipeline:** `run_7_pipeline.bat`
 
 ## Code Structure
 
-The project is organized into a single Python script, `code_clone_detection_system_reference_code.py`, which is divided into the following sections:
+The project is organized into the following files:
 
-*   **Part 1: GitHub Data Collection:** Contains the `GitHubDataCollector` class for cloning repositories and extracting code.
-*   **Part 2: Feature Engineering:** The `CodeFeatureExtractor` class is responsible for extracting features from the code.
-*   **Part 3: Deep Learning Models:** Implements the `CodeBERTModel` and `GraphNeuralNetwork` models.
-*   **Part 4: Meta-Classifier Implementation:** The `MetaClassifierSystem` class builds and evaluates the stacking ensemble.
-*   **Part 5: State-of-the-Art Comparison:** The `StateOfArtComparison` class trains and evaluates all the different models.
-*   **Part 6: Visualization Functions:** Contains functions for generating plots and charts.
-*   **Part 7: Main Execution Pipeline:** The `CodeCloneDetectionPipeline` class orchestrates the entire workflow.
-*   **Part 8: Example Usage:** The `main` function, which serves as the entry point of the script.
+*   `code_clone_detection_system_reference_code.py`: The original, monolithic script.
+*   `utils.py`: Contains utility functions and common imports.
+*   `1_data_collection.py`: GitHub data collection.
+*   `2_feature_engineering.py`: Feature extraction.
+*   `3_deep_learning_baselines.py`: Deep learning model definitions.
+*   `4_meta_classifier.py`: Meta-classifier system definition.
+*   `5_sota_comparison.py`: State-of-the-art comparison logic.
+*   `6_visualization.py`: Visualization functions.
+*   `7_pipeline.py`: The main pipeline for phased execution.
+*   `run_*.bat`: Batch files for running individual phases.
 
 ## Contributing
 
