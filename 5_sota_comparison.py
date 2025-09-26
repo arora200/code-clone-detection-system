@@ -3,8 +3,8 @@ Part 5: State-of-the-Art Comparison
 """
 
 from utils import *
-from 3_deep_learning_baselines import SimpleNN, CodeBERTModel, GraphNeuralNetwork
-from 4_meta_classifier import MetaClassifierSystem
+from deep_learning_baselines import SimpleNN, CodeBERTModel, GraphNeuralNetwork
+from meta_classifier import MetaClassifierSystem
 
 class StateOfArtComparison:
     """Compare meta-classifier with state-of-the-art methods"""

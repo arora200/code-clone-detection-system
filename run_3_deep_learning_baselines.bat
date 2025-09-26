@@ -1,1 +1,1 @@
-python 3_deep_learning_baselines.py
+python deep_learning_baselines.py

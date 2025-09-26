@@ -93,8 +93,8 @@ To run this phase, execute the following command:
 ```
 
 2.  **Feature Engineering:** `run_2_feature_engineering.bat`
-3.  **Deep Learning Baselines:** `run_3_deep_learning_baselines.bat` (Note: This script defines the models and is not meant to be run directly)
-4.  **Meta-Classifier:** `run_4_meta_classifier.bat` (Note: This script defines the models and is not meant to be run directly)
+3.  **Deep Learning Baselines:** `deep_learning_baselines.py` (Note: This script defines the models and is not meant to be run directly)
+4.  **Meta-Classifier:** `meta_classifier.py` (Note: This script defines the models and is not meant to be run directly)
 5.  **SOTA Comparison:** `run_5_sota_comparison.bat` (Note: This script defines the models and is not meant to be run directly)
 6.  **Visualization:** `run_6_visualization.bat` (Note: This script defines the models and is not meant to be run directly)
 7.  **Full Pipeline:** `run_7_pipeline.bat`

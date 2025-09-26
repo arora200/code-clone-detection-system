@@ -1,1 +1,1 @@
-python 4_meta_classifier.py
+python meta_classifier.py
