@@ -3,6 +3,7 @@ Part 4: Meta-Classifier Implementation
 """
 
 from utils import *
+from sklearn.impute import SimpleImputer
 
 class MetaClassifierSystem:
     """Implementation of the Meta-Classifier system as described in the document"""
@@ -41,7 +42,7 @@ class MetaClassifierSystem:
             'Ridge': RidgeClassifier(random_state=42),
             'LDA': LinearDiscriminantAnalysis(),
             'LinearSVC': LinearSVC(random_state=42, max_iter=10000),
-            'CalibratedCV': CalibratedClassifierCV(base_estimator=LinearSVC(max_iter=10000)),
+            'CalibratedCV': CalibratedClassifierCV(estimator=LinearSVC(max_iter=10000)),
             'LogisticRegression': LogisticRegression(max_iter=1000, random_state=42),
             'NearestCentroid': NearestCentroid(),
             'SGD': SGDClassifier(random_state=42),
@@ -70,8 +71,9 @@ class MetaClassifierSystem:
             print(f"Training base model: {name}")
             for j, (train_idx, val_idx) in enumerate(kfold.split(X_train)):
                 X_fold_train = X_train[train_idx]
-                y_fold_train = y_train[train_idx]
+                y_fold_train = y_train.iloc[train_idx]
                 X_fold_val = X_train[val_idx]
+                y_fold_val = y_train.iloc[val_idx]
                 
                 model.fit(X_fold_train, y_fold_train)
                 
@@ -89,7 +91,12 @@ class MetaClassifierSystem:
         
         # Phase 2: Train meta-classifier
         print(f"Training meta-classifier: {type(meta_model).__name__}")
-        meta_model.fit(meta_features_train, y_train)
+        
+        # Impute NaN values in meta_features_train before training meta_model
+        meta_imputer = SimpleImputer(strategy='mean')
+        meta_features_train_imputed = meta_imputer.fit_transform(meta_features_train)
+        
+        meta_model.fit(meta_features_train_imputed, y_train)
         
         # Generate predictions for test set if provided
         if X_test is not None:
@@ -100,7 +107,10 @@ class MetaClassifierSystem:
                 else:
                     meta_features_test[:, i] = model.predict(X_test)
             
-            return meta_model, meta_features_test
+            # Impute NaN values in meta_features_test using the same imputer fitted on meta_features_train
+            meta_features_test_imputed = meta_imputer.transform(meta_features_test)
+            
+            return meta_model, meta_features_test_imputed
         
         return meta_model, meta_features_train
     

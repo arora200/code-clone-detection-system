@@ -5,6 +5,7 @@ Part 5: State-of-the-Art Comparison
 from utils import *
 from deep_learning_baselines import SimpleNN, CodeBERTModel, GraphNeuralNetwork
 from meta_classifier import MetaClassifierSystem
+from sklearn.impute import SimpleImputer
 
 class StateOfArtComparison:
     """Compare meta-classifier with state-of-the-art methods"""
@@ -149,3 +150,36 @@ class StateOfArtComparison:
                 })
         
         return pd.DataFrame(results)
+
+if __name__ == '__main__':
+    print("="*60)
+    print("STATE-OF-THE-ART COMPARISON")
+    print("="*60)
+
+    # Load features and labels
+    try:
+        with open('./data/features.json', 'r') as f:
+            features_data = json.load(f)
+        X = pd.DataFrame(features_data).reset_index(drop=True)
+        # Generate placeholder labels for now, as features.json does not contain labels
+        y = pd.Series(np.random.randint(0, 2, len(features_data))).reset_index(drop=True)
+
+        # Handle NaN values using SimpleImputer
+        imputer = SimpleImputer(strategy='mean')
+        X = pd.DataFrame(imputer.fit_transform(X), columns=X.columns)
+
+    except FileNotFoundError:
+        print("Error: features.json not found. Please run Phase 2 (Feature Engineering) first.")
+        exit()
+    except Exception as e:
+        print(f"Error loading features: {e}")
+        exit()
+
+    sota_comparison = StateOfArtComparison()
+    sota_comparison.add_traditional_models()
+    sota_comparison.add_deep_learning_models()
+    results_df = sota_comparison.train_and_evaluate(X, y)
+
+    # Save the results
+    results_df.to_json('./data/sota_results.json', orient='records', indent=4)
+    print(f"SOTA comparison results saved to ./data/sota_results.json")

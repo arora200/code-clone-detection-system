@@ -1,3 +1,5 @@
 *.txt
 GEMINI.md
 data/collected_code.json
+data/sota_results.json
+results/

@@ -159,3 +159,21 @@ def create_visualizations(results_df, save_path="./results"):
     plt.close()
     
     print(f"All visualizations saved to {save_path}/")
+
+if __name__ == '__main__':
+    print("="*60)
+    print("VISUALIZATION")
+    print("="*60)
+
+    # Load SOTA comparison results
+    try:
+        results_df = pd.read_json('./data/sota_results.json')
+    except FileNotFoundError:
+        print("Error: sota_results.json not found. Please run Phase 5 (SOTA Comparison) first.")
+        exit()
+    except Exception as e:
+        print(f"Error loading SOTA results: {e}")
+        exit()
+
+    create_visualizations(results_df)
+    print("Visualizations generated successfully.")
