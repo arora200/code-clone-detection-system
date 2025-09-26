@@ -1,8 +1,17 @@
 """
 Part 1: GitHub Data Collection
 """
-
+import stat
+import errno
 from utils import *
+
+def handle_remove_readonly(func, path, exc):
+    excvalue = exc[1]
+    if func in (os.rmdir, os.remove, os.unlink) and excvalue.errno == errno.EACCES:
+        os.chmod(path, stat.S_IRWXU| stat.S_IRWXG| stat.S_IRWXO) # 0777
+        func(path)
+    else:
+        raise
 
 class GitHubDataCollector:
     """Collect Python CLI projects from GitHub"""
@@ -36,9 +45,9 @@ class GitHubDataCollector:
         
         try:
             if os.path.exists(repo_path):
-                shutil.rmtree(repo_path)
-            
-            Repo.clone_from(repo_url, repo_path)
+                print(f"Repository {repo_name} already exists. Skipping clone.")
+            else:
+                Repo.clone_from(repo_url, repo_path)
             
             python_files = []
             for root, dirs, files in os.walk(repo_path):
@@ -53,7 +62,7 @@ class GitHubDataCollector:
                                 'repo': repo_name
                             })
             
-            shutil.rmtree(repo_path)
+
             return python_files
         except Exception as e:
             print(f"Error cloning {repo_url}: {e}")
@@ -62,7 +71,7 @@ class GitHubDataCollector:
 if __name__ == '__main__':
     # Example usage
     data_collector = GitHubDataCollector()
-    repos = data_collector.search_cli_projects(max_repos=5)
+    repos = data_collector.search_cli_projects(max_repos=20)
     all_code_files = []
     for repo in repos:
         print(f"Processing repository: {repo['name']}")

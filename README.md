@@ -78,7 +78,20 @@ Modify the `main` function in `code_clone_detection_system_reference_code.py`:
 
 The project has been refactored into individual phases, each with its own script and batch file for execution.
 
-1.  **Data Collection:** `run_1_data_collection.bat`
+### Phase 1: Data Collection
+
+The first phase of the system involves collecting Python source code from GitHub. This is handled by the `1_data_collection.py` script. The process is as follows:
+
+1.  **Search for Repositories:** The script uses the GitHub API to search for popular Python CLI projects. It looks for repositories with a high number of stars to ensure the quality and relevance of the collected code.
+2.  **Clone Repositories:** The identified repositories are then cloned into the local `data/repos` directory. To improve efficiency and prevent issues with read-only files, the script now checks if a repository has already been downloaded. If a repository exists, the download is skipped.
+3.  **Extract Python Files:** The script traverses the cloned repositories, reads the content of all Python (`.py`) files, and stores them in a JSON file (`data/collected_code.json`). This file serves as the input for the next phase of the pipeline.
+
+To run this phase, execute the following command:
+
+```bash
+./run_1_data_collection.bat
+```
+
 2.  **Feature Engineering:** `run_2_feature_engineering.bat`
 3.  **Deep Learning Baselines:** `run_3_deep_learning_baselines.bat` (Note: This script defines the models and is not meant to be run directly)
 4.  **Meta-Classifier:** `run_4_meta_classifier.bat` (Note: This script defines the models and is not meant to be run directly)
