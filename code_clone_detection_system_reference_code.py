@@ -26,6 +26,7 @@ import tempfile
 import shutil
 
 # Machine Learning Libraries
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import (accuracy_score, balanced_accuracy_score, 
@@ -398,7 +399,7 @@ class MetaClassifierSystem:
             'Ridge': RidgeClassifier(random_state=42),
             'LDA': LinearDiscriminantAnalysis(),
             'LinearSVC': LinearSVC(random_state=42, max_iter=10000),
-            'CalibratedCV': CalibratedClassifierCV(base_estimator=LinearSVC(max_iter=10000)),
+            'CalibratedCV': CalibratedClassifierCV(estimator=LinearSVC(max_iter=10000)),
             'LogisticRegression': LogisticRegression(max_iter=1000, random_state=42),
             'NearestCentroid': NearestCentroid(),
             'SGD': SGDClassifier(random_state=42),
@@ -427,8 +428,9 @@ class MetaClassifierSystem:
             print(f"Training base model: {name}")
             for j, (train_idx, val_idx) in enumerate(kfold.split(X_train)):
                 X_fold_train = X_train[train_idx]
-                y_fold_train = y_train[train_idx]
+                y_fold_train = y_train.iloc[train_idx]
                 X_fold_val = X_train[val_idx]
+                y_fold_val = y_train.iloc[val_idx]
                 
                 model.fit(X_fold_train, y_fold_train)
                 
@@ -446,7 +448,12 @@ class MetaClassifierSystem:
         
         # Phase 2: Train meta-classifier
         print(f"Training meta-classifier: {type(meta_model).__name__}")
-        meta_model.fit(meta_features_train, y_train)
+        
+        # Impute NaN values in meta_features_train before training meta_model
+        meta_imputer = SimpleImputer(strategy='mean')
+        meta_features_train_imputed = meta_imputer.fit_transform(meta_features_train)
+        
+        meta_model.fit(meta_features_train_imputed, y_train)
         
         # Generate predictions for test set if provided
         if X_test is not None:
@@ -457,7 +464,10 @@ class MetaClassifierSystem:
                 else:
                     meta_features_test[:, i] = model.predict(X_test)
             
-            return meta_model, meta_features_test
+            # Impute NaN values in meta_features_test using the same imputer fitted on meta_features_train
+            meta_features_test_imputed = meta_imputer.transform(meta_features_test)
+            
+            return meta_model, meta_features_test_imputed
         
         return meta_model, meta_features_train
     
@@ -573,8 +583,10 @@ class StateOfArtComparison:
         
         self.models['Deep_Learning'] = dl_models
     
-    def train_and_evaluate(self, X, y, test_size=0.2):
+    def train_and_evaluate(self, X, y, pairs=None, test_size=0.2):
         """Train and evaluate all models"""
+        
+        # Split for traditional models
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=test_size, random_state=42, stratify=y
         )
@@ -626,9 +638,11 @@ class StateOfArtComparison:
         # Evaluate Meta-Classifier
         print("\n=== Evaluating Meta-Classifier ===")
         meta_system = MetaClassifierSystem()
-        meta_results = meta_system.evaluate_all_combinations(X, y)
+        y_for_meta = y.copy()
+        if not isinstance(y_for_meta, pd.Series):
+            y_for_meta = pd.Series(y_for_meta)
+        meta_results = meta_system.evaluate_all_combinations(X, y_for_meta)
         
-        # Add best meta-classifier result
         if not meta_results.empty:
             best_meta = meta_results.iloc[0]
             results.append({
@@ -641,11 +655,10 @@ class StateOfArtComparison:
                 'time_ms': best_meta['time_ms']
             })
         
-        # Deep Learning models (simplified evaluation due to complexity)
+        # Deep Learning models
         if 'Deep_Learning' in self.models:
             print("\n=== Evaluating Deep Learning Models ===")
             
-            # Simple NN evaluation
             if 'SimpleNN' in self.models['Deep_Learning']:
                 print("Training Simple Neural Network...")
                 start_time = time.time()
@@ -654,12 +667,10 @@ class StateOfArtComparison:
                 optimizer = optim.Adam(model.parameters())
                 criterion = nn.CrossEntropyLoss()
                 
-                # Convert to tensors
                 X_train_tensor = torch.FloatTensor(X_train_scaled)
                 y_train_tensor = torch.LongTensor(y_train)
                 X_test_tensor = torch.FloatTensor(X_test_scaled)
                 
-                # Simple training loop
                 model.train()
                 for epoch in range(50):
                     optimizer.zero_grad()
@@ -668,7 +679,6 @@ class StateOfArtComparison:
                     loss.backward()
                     optimizer.step()
                 
-                # Evaluation
                 model.eval()
                 with torch.no_grad():
                     outputs = model(X_test_tensor)
@@ -678,24 +688,77 @@ class StateOfArtComparison:
                 acc = accuracy_score(y_test, y_pred)
                 bal_acc = balanced_accuracy_score(y_test, y_pred)
                 f1 = f1_score(y_test, y_pred)
-                
                 time_taken = (time.time() - start_time) * 1000
                 
                 results.append({
-                    'model': 'SimpleNN',
-                    'type': 'Deep Learning',
-                    'accuracy': acc,
-                    'balanced_accuracy': bal_acc,
-                    'roc_auc': 0.0,
-                    'f1_score': f1,
+                    'model': 'SimpleNN', 'type': 'Deep Learning', 'accuracy': acc,
+                    'balanced_accuracy': bal_acc, 'roc_auc': 0.0, 'f1_score': f1,
                     'time_ms': time_taken
                 })
-        
-        return pd.DataFrame(results)
 
-#########################
-# PART 6: Visualization Functions
-#########################
+            if pairs is not None:
+                pairs_train, pairs_test, y_train_dl, y_test_dl = train_test_split(
+                    pairs, y, test_size=test_size, random_state=42, stratify=y
+                )
+
+                if 'CodeBERT' in self.models['Deep_Learning']:
+                    print("Training CodeBERT...")
+                    start_time = time.time()
+                    
+                    tokenizer = AutoTokenizer.from_pretrained('microsoft/codebert-base')
+                    
+                    codes_train = [p[0] + tokenizer.sep_token + p[1] for p in pairs_train]
+                    codes_test = [p[0] + tokenizer.sep_token + p[1] for p in pairs_test]
+
+                    train_dataset = CodeDataset(codes_train, y_train_dl, tokenizer)
+                    test_dataset = CodeDataset(codes_test, y_test_dl, tokenizer)
+                    
+                    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+                    test_loader = DataLoader(test_dataset, batch_size=8)
+                    
+                    model = self.models['Deep_Learning']['CodeBERT']()
+                    optimizer = optim.Adam(model.parameters(), lr=2e-5)
+                    criterion = nn.CrossEntropyLoss()
+                    
+                    model.train()
+                    for epoch in range(1): # 1 epoch for faster run
+                        for batch in train_loader:
+                            optimizer.zero_grad()
+                            input_ids = batch['input_ids']
+                            attention_mask = batch['attention_mask']
+                            labels = batch['label']
+                            
+                            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+                            loss = criterion(outputs, labels)
+                            loss.backward()
+                            optimizer.step()
+                    
+                    model.eval()
+                    all_preds = []
+                    with torch.no_grad():
+                        for batch in test_loader:
+                            input_ids = batch['input_ids']
+                            attention_mask = batch['attention_mask']
+                            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+                            _, predicted = torch.max(outputs, 1)
+                            all_preds.extend(predicted.numpy())
+                    
+                    y_pred = np.array(all_preds)
+                    acc = accuracy_score(y_test_dl, y_pred)
+                    bal_acc = balanced_accuracy_score(y_test_dl, y_pred)
+                    f1 = f1_score(y_test_dl, y_pred)
+                    time_taken = (time.time() - start_time) * 1000
+                    
+                    results.append({
+                        'model': 'CodeBERT', 'type': 'Deep Learning', 'accuracy': acc,
+                        'balanced_accuracy': bal_acc, 'roc_auc': 0.0, 'f1_score': f1,
+                        'time_ms': time_taken
+                    })
+
+                if GNN_AVAILABLE and 'GNN' in self.models['Deep_Learning']:
+                    print("GNN training not implemented in this step.")
+
+        return pd.DataFrame(results)
 
 def create_visualizations(results_df, save_path="./results"):
     """Create comprehensive visualizations for the comparison"""
@@ -734,7 +797,7 @@ def create_visualizations(results_df, save_path="./results"):
     
     plt.tight_layout()
     plt.savefig(f"{save_path}/performance_metrics_comparison.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
     # 2. Time Complexity Analysis
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -757,7 +820,7 @@ def create_visualizations(results_df, save_path="./results"):
     
     plt.tight_layout()
     plt.savefig(f"{save_path}/time_complexity_analysis.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
     # 3. Heatmap of Model Performance
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -773,7 +836,7 @@ def create_visualizations(results_df, save_path="./results"):
     
     plt.tight_layout()
     plt.savefig(f"{save_path}/performance_heatmap.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
     # 4. Radar Chart for Top 5 Models
     fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
@@ -798,7 +861,7 @@ def create_visualizations(results_df, save_path="./results"):
     
     plt.tight_layout()
     plt.savefig(f"{save_path}/radar_chart_top5.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
     # 5. Box Plot for Model Types
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
@@ -826,7 +889,7 @@ def create_visualizations(results_df, save_path="./results"):
     
     plt.tight_layout()
     plt.savefig(f"{save_path}/model_type_distributions.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
     # 6. Learning Curves Simulation (for demonstration)
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -849,13 +912,9 @@ def create_visualizations(results_df, save_path="./results"):
     
     plt.tight_layout()
     plt.savefig(f"{save_path}/learning_curves.png", dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
     print(f"All visualizations saved to {save_path}/")
-
-#########################
-# PART 7: Main Execution Pipeline
-#########################
 
 class CodeCloneDetectionPipeline:
     """Main pipeline for the entire code clone detection system"""
@@ -885,31 +944,77 @@ class CodeCloneDetectionPipeline:
         
         print(f"Collected {len(all_code_files)} Python files")
         return all_code_files
-    
+
+    def collect_data_from_local(self, path):
+        """Collect data from a local directory."""
+        print("=== Collecting Data from Local Directory ===")
+        all_code_files = []
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                if file.endswith('.py'):
+                    file_path = os.path.join(root, file)
+                    try:
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            content = f.read()
+                            all_code_files.append({
+                                'path': file_path,
+                                'content': content,
+                                'repo': os.path.basename(root)
+                            })
+                    except Exception as e:
+                        print(f"Could not read file {file_path}: {e}")
+        print(f"Collected {len(all_code_files)} Python files")
+        return all_code_files
+
     def create_clone_pairs(self, code_files, num_pairs=1000):
-        """Create code clone pairs for training"""
-        print("=== Creating Code Clone Pairs ===")
+        """Create code clone pairs for training, including mutated clones."""
+        print("=== Creating Realistic Code Clone Pairs ===")
         
+        # Import the mutator
+        from code_mutator import mutate_code
+        import random
+
         pairs = []
         labels = []
         
-        # Create positive pairs (clones) - simplified approach
-        for i in range(num_pairs // 2):
+        # Create positive pairs (clones)
+        # 50% will be exact copies (Type 1), 50% will be mutated (Type 2/3)
+        num_positive_pairs = num_pairs // 2
+        for i in range(num_positive_pairs):
             if i < len(code_files):
-                # Create slight modifications as clones
                 original = code_files[i]['content']
-                # Simple clone: same code
-                pairs.append((original, original))
+                if i % 2 == 0:
+                    # Type 1 clone
+                    clone = original
+                else:
+                    # Type 2/3 clone
+                    clone = mutate_code(original)
+                pairs.append((original, clone))
                 labels.append(1)
         
         # Create negative pairs (non-clones)
-        for i in range(num_pairs // 2):
-            if i < len(code_files) - 1:
-                idx1 = np.random.randint(0, len(code_files))
-                idx2 = np.random.randint(0, len(code_files))
-                if idx1 != idx2:
-                    pairs.append((code_files[idx1]['content'], code_files[idx2]['content']))
+        # Pair files from the same repository to make it more challenging
+        num_negative_pairs = num_pairs - num_positive_pairs
+        repos = defaultdict(list)
+        for i, file_info in enumerate(code_files):
+            repos[file_info.get('repo', 'default')].append(i)
+
+        repo_keys = list(repos.keys())
+        while len(pairs) < num_pairs:
+            # Pick a repo with more than one file
+            if not repo_keys:
+                break
+            repo_key = random.choice(repo_keys)
+            if len(repos[repo_key]) > 1:
+                idx1, idx2 = random.sample(repos[repo_key], 2)
+                code1 = code_files[idx1]['content']
+                code2 = code_files[idx2]['content']
+                if code1 != code2:
+                    pairs.append((code1, code2))
                     labels.append(0)
+            else:
+                # Avoid getting stuck on repos with one file
+                repo_keys.remove(repo_key)
         
         return pairs, labels
     
@@ -920,18 +1025,14 @@ class CodeCloneDetectionPipeline:
         all_features = []
         
         for code1, code2 in pairs:
-            # Extract structural features (qpc_f)
             features1 = self.feature_extractor.collect_code_structure(code1)
             features2 = self.feature_extractor.collect_code_structure(code2)
             
-            # Combine features (simplified - using difference and similarity metrics)
             combined_features = []
             for key in features1.keys():
-                # Absolute difference
                 diff = abs(features1[key] - features2[key])
                 combined_features.append(diff)
                 
-                # Ratio (similarity)
                 if features1[key] + features2[key] > 0:
                     ratio = min(features1[key], features2[key]) / max(features1[key], features2[key] + 0.001)
                 else:
@@ -946,40 +1047,38 @@ class CodeCloneDetectionPipeline:
         """Generate synthetic data for demonstration"""
         print("=== Generating Synthetic Data ===")
         
-        # Generate synthetic features (17 metrics * 2 for diff and ratio)
         np.random.seed(42)
         
-        # Generate two classes with different distributions
         n_class_0 = n_samples // 2
         n_class_1 = n_samples - n_class_0
         
-        # Class 0 (non-clones) - higher differences
         X_class_0 = np.random.randn(n_class_0, n_features) * 2 + 3
         y_class_0 = np.zeros(n_class_0)
         
-        # Class 1 (clones) - lower differences
         X_class_1 = np.random.randn(n_class_1, n_features) * 1.5 + 1
         y_class_1 = np.ones(n_class_1)
         
-        # Combine
         X = np.vstack([X_class_0, X_class_1])
         y = np.hstack([y_class_0, y_class_1])
         
-        # Shuffle
         shuffle_idx = np.random.permutation(n_samples)
         X = X[shuffle_idx]
         y = y[shuffle_idx]
         
-        return X, y.astype(int)
-    
-    def run_full_pipeline(self, use_synthetic=True, github_token=None):
+        return X, y.astype(int), None
+
+    def run_full_pipeline(self, use_synthetic=True, use_local_data=False, local_data_path=None, github_token=None):
         """Run the complete pipeline"""
         
+        pairs = None
         if use_synthetic:
-            # Use synthetic data for demonstration
-            self.features, self.labels = self.generate_synthetic_data()
+            self.features, self.labels, pairs = self.generate_synthetic_data()
+        elif use_local_data:
+            code_files = self.collect_data_from_local(local_data_path)
+            pairs, labels = self.create_clone_pairs(code_files)
+            self.features = self.extract_features(pairs)
+            self.labels = np.array(labels)
         else:
-            # Collect real data from GitHub
             code_files = self.collect_data_from_github(github_token)
             pairs, labels = self.create_clone_pairs(code_files)
             self.features = self.extract_features(pairs)
@@ -988,28 +1087,28 @@ class CodeCloneDetectionPipeline:
         print(f"\nDataset shape: {self.features.shape}")
         print(f"Class distribution: {np.bincount(self.labels)}")
         
-        # Add all model types
         print("\n=== Setting up Models ===")
         self.comparison_system.add_traditional_models()
         self.comparison_system.add_deep_learning_models()
         
-        # Train and evaluate all models
         print("\n=== Training and Evaluation ===")
         results = self.comparison_system.train_and_evaluate(
-            self.features, self.labels
+            self.features, self.labels, pairs=pairs
         )
         
-        # Display results
         print("\n=== Results Summary ===")
         print(results.sort_values('f1_score', ascending=False).to_string())
         
-        # Create visualizations
         print("\n=== Creating Visualizations ===")
         create_visualizations(results)
         
-        # Save results
         results.to_csv("./results/comparison_results.csv", index=False)
         print("\nResults saved to ./results/comparison_results.csv")
+        
+        # Save features and labels for external analysis
+        np.save('./results/features.npy', self.features)
+        np.save('./results/labels.npy', self.labels)
+        print("Features and labels saved for external analysis.")
         
         return results
 
@@ -1029,10 +1128,10 @@ def main():
     pipeline = CodeCloneDetectionPipeline()
     
     # Run the full pipeline
-    # Set use_synthetic=False and provide github_token to use real GitHub data
     results = pipeline.run_full_pipeline(
-        use_synthetic=True,  # Set to False for real GitHub data
-        github_token=None     # Add your GitHub token here if using real data
+        use_synthetic=False,
+        use_local_data=True,
+        local_data_path="D:\\AlgorithmBuilding\\Chavi\\data\\repos"
     )
     
     # Print top 5 models
