@@ -64,3 +64,4 @@ results/
 # Generated files
 analysis_report.html
 
+docs/_build/ 
