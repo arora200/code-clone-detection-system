@@ -1,44 +1,33 @@
 # Code Clone Detection System
 
-This project is a comprehensive Python-based system for detecting code clones using machine learning and deep learning techniques. It provides an end-to-end pipeline from data collection and feature engineering to model training, evaluation, and visualization.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/arora200/code-clone-detection-system)
 
-## Project Overview
-
-The primary goal of this project is to identify similar or identical code fragments (code clones) within a codebase. It leverages a variety of machine learning models, including a unique meta-classifier approach, to achieve high accuracy in clone detection. The system is designed to be modular and extensible, allowing for easy integration of new models and features.
+A comprehensive Python-based system for detecting code clones using machine learning and deep learning techniques. This project provides an end-to-end pipeline from data collection and feature engineering to model training, evaluation, and visualization.
 
 ## Key Features
 
-*   **GitHub Data Collection:** Automatically collects Python CLI projects from GitHub for building a diverse dataset.
-*   **Extensive Feature Engineering:** Extracts 17 different metrics from the source code, including:
-    *   Structural code metrics (lines of code, number of functions, classes, etc.)
-    *   Complexity metrics (cyclomatic complexity, Halstead metrics)
-    *   Maintainability Index
-    *   Sequence of Code (SoC) features
-*   **Deep Learning Baselines:** Implements several deep learning models for comparison, such as:
-    *   **CodeBERT:** A transformer-based model pre-trained on a large corpus of code.
-    *   **Graph Neural Networks (GNN):** To represent and analyze the code's structure as a graph.
-    *   **Simple Neural Network:** A baseline deep learning model.
-*   **Meta-Classifier System:** A stacking ensemble model that combines the predictions of multiple base classifiers to improve performance. It follows the methodology described in Algorithm 2 of the associated research document.
-*   **State-of-the-Art Comparison:** The system evaluates and compares the performance of 22 different classifiers, including:
-    *   Traditional ML models (Random Forest, Gradient Boosting, etc.)
-    *   Deep learning models
-    *   The meta-classifier ensemble
-*   **Comprehensive Visualizations:** Generates a variety of plots and charts to visualize and analyze the results, such as:
-    *   Performance metrics comparison charts
-    *   Time complexity analysis
-    *   Performance heatmaps
-    *   Radar charts for multi-metric comparison
-    *   Distribution box plots by model type
-    *   Learning curves
-*   **End-to-End Pipeline:** A complete, runnable pipeline from data collection to results generation.
+-   **Realistic Dataset Generation:** Automatically collects Python projects from GitHub and generates a challenging dataset with mutated code clones (Type 2/3) for robust model evaluation.
+-   **Extensive Feature Engineering:** Extracts 34 features from code pairs, including structural metrics, complexity metrics, and Halstead metrics.
+-   **Advanced Model Comparison:** Implements and evaluates a wide range of models:
+    -   **22 Traditional ML Classifiers** (e.g., ExtraTrees, RandomForest, GradientBoosting).
+    -   **Deep Learning Models** like CodeBERT and Simple Neural Networks.
+    -   A **Stacking Ensemble (Meta-Classifier)** to combine predictions.
+-   **In-depth Analysis:**
+    -   Investigates model overfitting using cross-validation and learning curves.
+    -   Conducts experiments to find the most robust and efficient model architecture.
+-   **Comprehensive Reporting:** Automatically generates a detailed HTML report with performance tables and embedded visualizations, including:
+    -   Performance and time complexity comparisons.
+    -   Confusion matrices, ROC curves, and feature importance plots.
 
-## Technologies Used
+## Technology Stack
 
-*   **Programming Language:** Python
-*   **Machine Learning:** Scikit-learn, PyTorch, Transformers (Hugging Face)
-*   **Data Handling:** Pandas, NumPy
-*   **Visualization:** Matplotlib, Seaborn
-*   **Data Collection:** GitPython, Requests
+-   **Programming Language:** Python
+-   **Machine Learning:** Scikit-learn, PyTorch, Transformers (Hugging Face)
+-   **Data Handling:** Pandas, NumPy
+-   **Visualization:** Matplotlib, Seaborn
+-   **Data Collection:** GitPython, Requests
 
 ## Installation
 
@@ -48,72 +37,42 @@ The primary goal of this project is to identify similar or identical code fragme
     cd code-clone-detection-system
     ```
 
-2.  **Install the dependencies:**
+2.  **Create and activate a virtual environment (recommended):**
     ```bash
-    pip install numpy pandas matplotlib seaborn scikit-learn torch transformers gitpython requests lightgbm torch-geometric
+    python -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    ```
+
+3.  **Install the dependencies from `requirements.txt`:**
+    ```bash
+    pip install -r requirements.txt
     ```
 
 ## Usage
 
-The system can be run in two ways: as a single, monolithic script or as a series of individual phases.
-
-### Monolithic Execution
-
-To run the entire pipeline from a single script, use the `code_clone_detection_system_reference_code.py` file.
-
-**Using Synthetic Data:**
+To run the entire pipeline, from data collection to report generation, execute the main script:
 
 ```bash
 python code_clone_detection_system_reference_code.py
 ```
 
-**Using Real GitHub Data:**
+The script will:
+1.  Collect Python files from the `./data/repos` directory.
+2.  Generate a realistic dataset of code clone pairs.
+3.  Train and evaluate over 20 different models.
+4.  Generate a full HTML report (`analysis_report.html`) with all results and visualizations.
 
-Modify the `main` function in `code_clone_detection_system_reference_code.py`:
+## Project Roadmap
 
-1.  Set `use_synthetic=False`.
-2.  Provide your GitHub token.
-
-### Phased Execution
-
-The project has been refactored into individual phases, each with its own script and batch file for execution.
-
-### Phase 1: Data Collection
-
-The first phase of the system involves collecting Python source code from GitHub. This is handled by the `1_data_collection.py` script. The process is as follows:
-
-1.  **Search for Repositories:** The script uses the GitHub API to search for popular Python CLI projects. It looks for repositories with a high number of stars to ensure the quality and relevance of the collected code.
-2.  **Clone Repositories:** The identified repositories are then cloned into the local `data/repos` directory. To improve efficiency and prevent issues with read-only files, the script now checks if a repository has already been downloaded. If a repository exists, the download is skipped.
-3.  **Extract Python Files:** The script traverses the cloned repositories, reads the content of all Python (`.py`) files, and stores them in a JSON file (`data/collected_code.json`). This file serves as the input for the next phase of the pipeline.
-
-To run this phase, execute the following command:
-
-```bash
-./run_1_data_collection.bat
-```
-
-2.  **Feature Engineering:** `run_2_feature_engineering.bat`
-3.  **Deep Learning Baselines:** `deep_learning_baselines.py` (Note: This script defines the models and is not meant to be run directly)
-4.  **Meta-Classifier:** `meta_classifier.py` (Note: This script defines the models and is not meant to be run directly)
-5.  **SOTA Comparison:** `run_5_sota_comparison.bat` (Note: This script defines the models and is not meant to be run directly)
-6.  **Visualization:** `run_6_visualization.bat` (Note: This script defines the models and is not meant to be run directly)
-7.  **Full Pipeline:** `run_7_pipeline.bat`
-
-## Code Structure
-
-The project is organized into the following files:
-
-*   `code_clone_detection_system_reference_code.py`: The original, monolithic script.
-*   `utils.py`: Contains utility functions and common imports.
-*   `1_data_collection.py`: GitHub data collection.
-*   `2_feature_engineering.py`: Feature extraction.
-*   `3_deep_learning_baselines.py`: Deep learning model definitions.
-*   `4_meta_classifier.py`: Meta-classifier system definition.
-*   `5_sota_comparison.py`: State-of-the-art comparison logic.
-*   `6_visualization.py`: Visualization functions.
-*   `7_pipeline.py`: The main pipeline for phased execution.
-*   `run_*.bat`: Batch files for running individual phases.
+-   [ ] Implement a Graph Neural Network (GNN) model for clone detection.
+-   [ ] Perform extensive hyperparameter tuning on the top-performing models.
+-   [ ] Expand the code mutation capabilities to generate more complex clone types.
+-   [ ] Set up a CI/CD pipeline with GitHub Actions to automate linting and testing.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a pull request or open an issue if you have any suggestions or find any bugs.
+Contributions are welcome! Please see our [Contributing Guidelines](CONTRIBUTING.md) to get started. Also, please adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
